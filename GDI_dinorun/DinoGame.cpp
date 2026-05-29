@@ -38,6 +38,7 @@ bool DinoGame::Initialize()
     // 필요한 리소스를 로드해볼까요
 #pragma region resource
     m_pPlayerBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/GUGARUN.png");
+    m_pJumpBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/JumpGuGuGaGa.png");
 #pragma region endregion
   
     CreatePlayer();
@@ -61,6 +62,9 @@ void DinoGame::Run()
             else if (msg.message == WM_MOUSEMOVE)
             {
                 DinoGame::OnMouseMove(LOWORD(msg.lParam), HIWORD(msg.lParam));
+            }
+            else if (msg.message == WM_LBUTTONUP) {
+                DinoGame::OnLButtonUp(LOWORD(msg.lParam), HIWORD(msg.lParam));
             }
             else
             {
@@ -160,65 +164,75 @@ void DinoGame::CreateWall()
 
 }
 
-void DinoGame::UpdateDinoInfo() {
+void DinoGame::UpdateDinoInfo()
+{
     if (!m_pDino) return;
 
+    // 누르고 있는 동안 시간 누적
+    if (m_isPressingJump)
+        m_jumpPressTime += m_fDeltaTime;
 
     Vector2f dinoPos = m_pDino->GetPosition();
-    float targetX = (float)m_MousePos.x;
-    float dinoX = (float)dinoPos.x;
 
-    float dir = (targetX - dinoX);
-
-
-    if (abs(dir) > 5.0f) {
-        dir = (dir > 0) ? 1.0f : -1.0f; //방향 추출
-        m_pDino->SetDirection(Vector2f(dir, 0.0f));
-    }
-    if (!m_isOnGround) {
-        m_jumpX = dir;
-    }
-    else {
-        m_pDino->SetDirection(Vector2f(0.0f, 0.0f));
-    } 
-    // 여기까지 마우스x를 이용해서 좌우 이동
-
-    const float GROUND_Y = 500.0f;
-
+    // ★ 점프 중이면 X방향 유지, 아니면 마우스 X 따라가기
     if (!m_isOnGround)
     {
+        m_pDino->SetDirection(Vector2f(m_jumpX, 0.0f));
 
+    }
+    else
+    {
+        float targetX = (float)m_MousePos.x;
+        float dir = targetX - dinoPos.x;
+
+        // UpdateDinoInfo에서
+        if (abs(dir) > 5.0f)
+        {
+            float dirNorm = (dir > 0) ? 1.0f : -1.0f;
+            m_pDino->SetDirection(Vector2f(dirNorm, 0.0f));
+
+            if (dirNorm != m_lastDirNorm) // 방향 바뀔 때만
+            {
+                float speed = (dirNorm < 0) ? 50.0f : 150.0f; // 왼쪽 빠름, 오른쪽 느림
+                m_pDino->ChangeBitmapInfo(m_pPlayerBitmapInfo, 20, speed);
+                m_lastDirNorm = dirNorm;
+            }
+        }
+    }
+
+    // 점프 Y 계산
+    const float GROUND_Y = 500.0f;
+    if (!m_isOnGround)
+    {
         m_jumpTime += m_fDeltaTime;
-
         float t = m_jumpTime / m_jumpDuration;
 
         if (t >= 1.0f)
         {
-            t = 1.0f;
             m_isOnGround = true;
             m_jumpCount = 0;
             dinoPos.y = GROUND_Y;
+            m_pDino->ChangeBitmapInfo(m_pPlayerBitmapInfo,20, 50.0f); // ← 달리기로 복원
+
+        }
+        else if (t < 0.5f)
+        {
+            float upT = t / 0.5f;
+            dinoPos.y = GROUND_Y + (m_jumpTarget - GROUND_Y) * upT;
         }
         else
         {
-            if (t < 0.5f)
-            {
-                // 올라가는 구간: ground -> target
-                float upT = t / 0.5f;
-                dinoPos.y = GROUND_Y + (m_jumpTarget - GROUND_Y) * upT;
-            }
-            else
-            {
-                // 내려오는 구간: target -> ground
-                float downT = (t - 0.5f) / 0.5f;
-                dinoPos.y = m_jumpTarget + (GROUND_Y - m_jumpTarget) * downT;
-            }
+            float downT = (t - 0.5f) / 0.5f;
+            dinoPos.y = m_jumpTarget + (GROUND_Y - m_jumpTarget) * downT;
         }
     }
 
+    // ★ 화면 밖 제한
+    float halfW = 100.0f; // 캐릭터 절반 너비
+    dinoPos.x = dinoPos.x < halfW ? halfW : dinoPos.x;
+
     m_pDino->SetPosition(dinoPos.x, dinoPos.y);
 }
-
 void DinoGame::UpdateWallInfo() {
     
 }
@@ -248,7 +262,7 @@ void DinoGame::Render()
     //Clear the back buffer
     ::PatBlt(m_hBackDC, 0, 0, m_width, m_height, WHITENESS);
     if (m_pDino) m_pDino->Render(m_hBackDC);
-
+    
     //메모리 DC에 그려진 결과를 실제 DC(m_hFrontDC)로 복사
     BitBlt(m_hFrontDC, 0, 0, m_width, m_height, m_hBackDC, 0, 0, SRCCOPY);
 }
@@ -292,26 +306,39 @@ void DinoGame::OnLButtonDown(int x, int y)
 {
     std::cout << __FUNCTION__ << std::endl;
     std::cout << "x: " << x << ", y: " << y << std::endl;
-    
 
 
-    if (m_jumpCount < 2) {
-        Vector2f dinoPos = m_pDino->GetPosition();
-        m_PlayerTargetPos.x = x;
-        m_PlayerTargetPos.y = y;
-
-        m_jumpStartY = dinoPos.y;
-        m_jumpTarget = (float)y;
-        m_jumpTime = 1000.0f;
-
-        
-
-        m_jumpDuration = 3500.0f;// *(m_jumpTarget - m_PlayerTargetPos.y);
-
-        m_jumpCount++;
-        m_isOnGround = false;
-   }
+    if (m_jumpCount < 2 && !m_isPressingJump)
+    {
+        m_isPressingJump = true;
+        m_jumpPressTime = 0.0f;
+        // 점프 시작할 때 현재 X 방향 저장
+        m_jumpX = m_pDino->GetDirection().x;
+    }
 }
+
+void DinoGame::OnLButtonUp(int x, int y)
+{
+
+    if (!m_isPressingJump) return;
+
+    m_pDino->ChangeBitmapInfo(m_pJumpBitmapInfo, 18, 20.0f); 
+
+    m_isPressingJump = false;
+
+    // 누른 시간에 따라 점프 높이/시간 결정
+    // 최소 100ms, 최대 500ms 기준
+    float pressTime = m_jumpPressTime > 500.0f ? 500.0f : m_jumpPressTime;    
+    float ratio = pressTime / 500.0f; // 0.0 ~ 1.0
+
+    float jumpHeight = 150.0f + ratio * 200.0f; // 최소150 ~ 최대350 픽셀
+    m_jumpTarget = 500.0f - jumpHeight;      // y가 작을수록 위
+    m_jumpDuration = 500.0f + ratio * 500.0f;  // 최소500 ~ 최대1000ms
+    m_jumpTime = 0.0f;
+    m_jumpCount++;
+    m_isOnGround = false;
+}
+
 
     // 3. 더블버퍼링 셋업
     // 4. 리소스 로딩 (png)

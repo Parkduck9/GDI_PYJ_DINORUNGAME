@@ -92,6 +92,7 @@ public:
 	~GameObject() override;
 
 	void SetBitmapInfo(BitmapInfo* bitmapInfo);
+	void ChangeBitmapInfo(BitmapInfo* bitmapInfo, int frameCount ,float m_frameDuration);
 
 	void Update(float deltaTime) override;
 	void Render(HDC hdc) override;
@@ -124,8 +125,8 @@ protected:
 	int m_frameCount = 20; // 프레임 수
 
 	float m_frameTime = 0.0f;
-	float m_frameDuration = 100.0f; // 임의 설정
-
+	float m_frameDuration = 50.0f;
+	float m_frameJumpDuration = 10.0f;
 	// Collider
 	ColliderCircle* m_pColliderCircle = nullptr;
 	ColliderBox* m_pColliderBox = nullptr;

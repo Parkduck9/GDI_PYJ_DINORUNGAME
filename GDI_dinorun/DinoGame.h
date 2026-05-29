@@ -31,6 +31,7 @@ private:
 
 	void OnMouseMove(int x, int y);
 	void OnLButtonDown(int x, int y);
+	void OnLButtonUp(int x, int y);
 
 	void FixedUpdate();
 	void LogicUpdate();
@@ -63,6 +64,11 @@ private :
 	float m_jumpTarget = 0.0f;
 	int m_jumpCount = 0;
 
+	float m_lastDirNorm = 0.0f;
+
+	float m_jumpPressTime = 0.0f;
+	bool  m_isPressingJump = false;
+
 	bool m_isOnGround = true;
 
 
@@ -87,6 +93,7 @@ private :
 	using BitmapInfo = renderHelp::BitmapInfo;
 
 	BitmapInfo* m_pPlayerBitmapInfo = nullptr;
+	BitmapInfo* m_pJumpBitmapInfo = nullptr;
 
 	BitmapInfo* m_pWallBitmapInfo = nullptr;
 };
