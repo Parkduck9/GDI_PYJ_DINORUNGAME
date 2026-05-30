@@ -39,6 +39,8 @@ bool DinoGame::Initialize()
 #pragma region resource
     m_pPlayerBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/GUGARUN.png");
     m_pJumpBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/JumpGuGuGaGa.png");
+    m_pMapBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/antarcticamap.png");
+
 #pragma region endregion
   
     CreatePlayer();
@@ -98,6 +100,7 @@ void DinoGame::LogicUpdate()
 {
     
     UpdateDinoInfo();
+    UpdateMapInfo();
     UpdateWallInfo();
     
     if (m_pDino) m_pDino->Update(m_fDeltaTime);
@@ -108,7 +111,7 @@ void DinoGame::CreatePlayer()
     GameObject* pNewObject = new GameObject(ObjectType::PLAYER);
 
     pNewObject->SetName("Player");
-    pNewObject->SetPosition(300.0f, 500.0f);
+    pNewObject->SetPosition(300.0f, 620.0f);
     pNewObject->SetSpeed(0.15f); // 일단, 임의로 설정  
 
     pNewObject->SetWidth(200); // 일단, 임의로 설정
@@ -201,24 +204,26 @@ void DinoGame::UpdateDinoInfo()
     }
 
     // 점프 Y 계산
-    const float GROUND_Y = 500.0f;
+    const float GROUND_Y = 620.0f;
     if (!m_isOnGround)
     {
         m_jumpTime += m_fDeltaTime;
         float t = m_jumpTime / m_jumpDuration;
+
+        // 2단 점프면 시작Y가 땅이 아닌 공중
+        float startY = (m_jumpCount == 2) ? m_jumpStartY : GROUND_Y;
 
         if (t >= 1.0f)
         {
             m_isOnGround = true;
             m_jumpCount = 0;
             dinoPos.y = GROUND_Y;
-            m_pDino->ChangeBitmapInfo(m_pPlayerBitmapInfo,20, 50.0f); // ← 달리기로 복원
-
+            m_pDino->ChangeBitmapInfo(m_pPlayerBitmapInfo, 20, 50.0f);
         }
         else if (t < 0.5f)
         {
             float upT = t / 0.5f;
-            dinoPos.y = GROUND_Y + (m_jumpTarget - GROUND_Y) * upT;
+            dinoPos.y = startY + (m_jumpTarget - startY) * upT;
         }
         else
         {
@@ -237,6 +242,18 @@ void DinoGame::UpdateWallInfo() {
     
 }
 
+void DinoGame::UpdateMapInfo() {
+    if (!m_pMapBitmapInfo) return;
+
+    m_mapScrollX -= m_mapScrollSpeed * m_fDeltaTime;
+
+    int mapW = m_pMapBitmapInfo->GetWidth();
+    if (m_mapScrollX <= 0)      // 0 이하일 때만 리셋
+    {
+        m_mapScrollX += mapW;
+    }
+
+}
 void DinoGame::ResolveWallOverLap() { // 적이 안겹치게 하는 함수
     
 
@@ -261,8 +278,41 @@ void DinoGame::Render()
 {
     //Clear the back buffer
     ::PatBlt(m_hBackDC, 0, 0, m_width, m_height, WHITENESS);
+
+    if (m_pMapBitmapInfo)
+    {
+        HDC hMapDC = CreateCompatibleDC(m_hBackDC);
+        HBITMAP hOld = (HBITMAP)SelectObject(hMapDC, m_pMapBitmapInfo->GetBitmapHandle());
+
+        int mapW = m_pMapBitmapInfo->GetWidth();
+        int mapH = m_pMapBitmapInfo->GetHeight();
+        int srcX = (int)m_mapScrollX;
+
+        // 배경을 화면 높이에 맞게 비율 유지하며 스트레치
+        // 화면 너비 기준으로 나눠서 두 조각을 이어붙임
+        // 첫 번째 조각: srcX ~ mapW
+        int srcW1 = mapW - srcX;
+        int dstW1 = (int)((float)srcW1 / mapW * m_width * ((float)mapW / mapH) / ((float)m_width / m_height));
+
+        // 계산이 복잡하니 단순하게: 맵을 화면 높이에 맞춰 전체 스케일 먼저 계산
+        float scale = (float)m_height / mapH;
+        int scaledMapW = (int)(mapW * scale); // 스케일 적용된 전체 맵 너비
+
+        int dstX1 = -(int)(srcX * scale); // 오른쪽으로 밀기
+
+        // 첫 번째: 맵 전체를 스케일링해서 dstX1 위치에 그림
+        StretchBlt(m_hBackDC, dstX1, 0, scaledMapW, m_height,
+            hMapDC, 0, 0, mapW, mapH, SRCCOPY);
+
+        // 두 번째: 맵이 끝나는 지점 바로 뒤에 이어붙이기 (무한루프)
+        StretchBlt(m_hBackDC, dstX1 + scaledMapW, 0, scaledMapW, m_height,
+            hMapDC, 0, 0, mapW, mapH, SRCCOPY);
+
+        SelectObject(hMapDC, hOld);
+        DeleteDC(hMapDC);
+    }
+
     if (m_pDino) m_pDino->Render(m_hBackDC);
-    
     //메모리 DC에 그려진 결과를 실제 DC(m_hFrontDC)로 복사
     BitBlt(m_hFrontDC, 0, 0, m_width, m_height, m_hBackDC, 0, 0, SRCCOPY);
 }
@@ -301,19 +351,35 @@ void DinoGame::OnMouseMove(int x, int y)
     m_MousePosPrev = m_MousePos;
     m_MousePos = { x, y };
 }
-
 void DinoGame::OnLButtonDown(int x, int y)
 {
     std::cout << __FUNCTION__ << std::endl;
     std::cout << "x: " << x << ", y: " << y << std::endl;
 
+    if (m_isPressingJump) return; // 이미 누르는 중이면 무시
 
-    if (m_jumpCount < 2 && !m_isPressingJump)
+    // 1단 점프: 땅에 있을 때 → 꾹 누르기 방식
+    if (m_jumpCount == 0)
     {
         m_isPressingJump = true;
         m_jumpPressTime = 0.0f;
-        // 점프 시작할 때 현재 X 방향 저장
         m_jumpX = m_pDino->GetDirection().x;
+    }
+    // 2단 점프: 공중에 있을 때 → 클릭 순간 바로 점프
+    else if (m_jumpCount == 1)
+    {
+        m_pDino->ChangeBitmapInfo(m_pJumpBitmapInfo, 18, 20.0f);
+
+        // 현재 높이에서 바로 점프 (고정 높이)
+        Vector2f dinoPos = m_pDino->GetPosition();
+        m_jumpTarget = dinoPos.y - 200.0f;   // 현재 위치에서 200px 위로
+        m_jumpDuration = 600.0f;              // 고정 시간
+        m_jumpTime = 0.0f;
+        m_jumpCount++;
+        m_isOnGround = false;
+
+        // 2단 점프 시작 Y 기준을 현재 위치로 재설정
+        m_jumpStartY = dinoPos.y;
     }
 }
 
@@ -328,12 +394,12 @@ void DinoGame::OnLButtonUp(int x, int y)
 
     // 누른 시간에 따라 점프 높이/시간 결정
     // 최소 100ms, 최대 500ms 기준
-    float pressTime = m_jumpPressTime > 500.0f ? 500.0f : m_jumpPressTime;    
-    float ratio = pressTime / 500.0f; // 0.0 ~ 1.0
+    float pressTime = m_jumpPressTime > 620.0f ? 620.0f : m_jumpPressTime;    
+    float ratio = pressTime / 620.0f; // 0.0 ~ 1.0
 
     float jumpHeight = 150.0f + ratio * 200.0f; // 최소150 ~ 최대350 픽셀
-    m_jumpTarget = 500.0f - jumpHeight;      // y가 작을수록 위
-    m_jumpDuration = 500.0f + ratio * 500.0f;  // 최소500 ~ 최대1000ms
+    m_jumpTarget = 620.0f - jumpHeight;      // y가 작을수록 위
+    m_jumpDuration = 620.0f + ratio * 620.0f;  // 최소500 ~ 최대1000ms
     m_jumpTime = 0.0f;
     m_jumpCount++;
     m_isOnGround = false;
