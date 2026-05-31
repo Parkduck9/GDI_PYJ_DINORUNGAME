@@ -103,11 +103,11 @@ void DinoGame::LogicUpdate()
     UpdateMapInfo();
     UpdateWallInfo();
     
-    // ── 점수: 시간 경과 ──
-    if (m_gameTime > 3000.0f)
-        m_score += (int)(m_fDeltaTime * 0.01f);
+    //점수: 시간 경과
+    if (m_gameTime > 1000.0f)
+        m_score += (int)(m_fDeltaTime * 1.0f);
 
-    // ── 충돌 체크 ──
+    //충돌 체크
     if (m_pDino)
     {
         learning::ColliderBox* dinoBox = m_pDino->GetColliderBox();
@@ -120,12 +120,10 @@ void DinoGame::LogicUpdate()
 
             if (m_pObjects[i]->Type() == ObjectType::ITEM)
             {
-                // 쿠키 → Circle vs Box 충돌
-                // 간단하게: 다이노 박스 중심과 쿠키 원의 거리로 체크
+                // 구구가가와 쿠키 < 거리비교
                 learning::ColliderCircle* coinCircle = m_pObjects[i]->GetColliderCircle();
                 if (dinoBox && coinCircle)
                 {
-                    // 박스 중심과 원 중심 거리 비교
                     float dx = dinoBox->center.x - coinCircle->center.x;
                     float dy = dinoBox->center.y - coinCircle->center.y;
                     float dist = sqrt(dx * dx + dy * dy);
@@ -186,11 +184,11 @@ void DinoGame::CreateEnemy() {
 
    // m_EnemySpawnPos = { 0, 0 };
 
-    pNewObject->SetSpeed(1.0f); // 일단, 임의로 설정   
+    pNewObject->SetSpeed(1.0f); 
 
 
-    pNewObject->SetWidth(100); // 일단, 임의로 설정
-    pNewObject->SetHeight(100); // 일단, 임의로 설정
+    pNewObject->SetWidth(100); 
+    pNewObject->SetHeight(100); 
 
     pNewObject->SetColliderCircle(50.0f); // 일단, 임의로 설정. 오브젝트 설정할 거 다 하고 나서 하자.
     //pNewObject->SetBitmapInfo(m_pEnemyWallInfo);
@@ -231,13 +229,13 @@ void DinoGame::UpdateDinoInfo()
 
     Vector2f dinoPos = m_pDino->GetPosition();
 
-    // ★ 점프 중이면 X방향 유지, 아니면 마우스 X 따라가기
+    // 점프 중이면 X방향 유지
     if (!m_isOnGround)
     {
         m_pDino->SetDirection(Vector2f(m_jumpX, 0.0f));
 
     }
-    else
+    else // 마우스 따라다니기
     {
         float targetX = (float)m_MousePos.x;
         float dir = targetX - dinoPos.x;
@@ -257,14 +255,14 @@ void DinoGame::UpdateDinoInfo()
         }
     }
 
-    // 점프 Y 계산
+    // 점프 y계산
     const float GROUND_Y = 620.0f;
     if (!m_isOnGround)
     {
         m_jumpTime += m_fDeltaTime;
         float t = m_jumpTime / m_jumpDuration;
 
-        // 2단 점프면 시작Y가 땅이 아닌 공중
+        // 2단 점프면 시작y가 땅이 아닌 공중
         float startY = (m_jumpCount == 2) ? m_jumpStartY : GROUND_Y;
 
         if (t >= 1.0f)
@@ -286,19 +284,19 @@ void DinoGame::UpdateDinoInfo()
         }
     }
 
-    // ★ 화면 밖 제한
+    //화면 밖 제한
     float halfW = 100.0f; // 캐릭터 절반 너비
     dinoPos.x = dinoPos.x < halfW ? halfW : dinoPos.x;
 
     m_pDino->SetPosition(dinoPos.x, dinoPos.y);
 }
 void DinoGame::UpdateWallInfo() {
-    const float GAME_START_DELAY = 3000.0f; // 3초 후부터 스폰
-    const float SCREEN_RIGHT = 1124.0f;     // 화면 오른쪽 경계
+    const float GAME_START_DELAY = 3000.0f; // 대략크 3초 후부터 스폰
+    const float SCREEN_RIGHT = 1100.0f;     // 화면 오른쪽 경계
 
     m_gameTime += m_fDeltaTime;
 
-    // ── 오브젝트 이동 & 화면 밖 삭제 ──
+    // 오브젝트 이동 & 화면 밖 삭제
     for (int i = 0; i < 10; ++i)
     {
         if (m_pObjects[i] == nullptr) continue;
@@ -314,7 +312,7 @@ void DinoGame::UpdateWallInfo() {
         }
     }
 
-    // ── 3초 이후부터 스폰 ──
+    // 3초 이후부터 스폰
     if (m_gameTime < GAME_START_DELAY) return;
 
     m_spawnTimer += m_fDeltaTime;
@@ -343,14 +341,14 @@ void DinoGame::UpdateWallInfo() {
     if (isCoin)
     {
         // 쿠키: 100 ~ 620 전체 랜덤
-        spawnY = 100.0f + (rand() % 521); // 100 ~ 620
+        spawnY = 100.0f + (rand() % 520); // 100 ~ 620
     }
     else
     {
         // 벽: 620(바닥) ~ 최대점프 높이 사이
-        // 최대점프 = 620 - 350 = 270 (jumpHeight 최대 350px)
-        // 너무 낮으면 항상 피할 수 없으니 최소 점프(150px) 아래로
-        // → 620 ~ 470 사이 (620 - 150 = 470)
+        // 최대점프 = 620 - 350 = 270 (jumpHeight 최대 350)
+        // 너무 낮으면 항상 피할 수 없으니 최소 점프150 아래로
+        // → 620 ~ 470 사이 620 - 150 = 470
         spawnY = 470.0f + (rand() % 151); // 470 ~ 620
     }
     pNew->SetPosition(-50.0f, spawnY);  // 화면 왼쪽 밖에서 시작
@@ -374,7 +372,7 @@ void DinoGame::UpdateWallInfo() {
             pNew->SetBitmapInfo(m_pWallBitmapInfo, 1);
     }
 
-    m_pObjects[emptySlot] = pNew;  // ← 이게 빠져서 쿠키가 안 나온 거예요!
+    m_pObjects[emptySlot] = pNew;  
 
 
 }
@@ -453,7 +451,7 @@ void DinoGame::Render()
 
     if (m_pDino) m_pDino->Render(m_hBackDC);
 
-    // ── 점수판 추가! ──
+    //점수판 추가!
     wchar_t scoreText[64];
     swprintf_s(scoreText, L"SCORE: %d", m_score);
     SetBkMode(m_hBackDC, TRANSPARENT);
@@ -510,27 +508,27 @@ void DinoGame::OnLButtonDown(int x, int y)
 
     if (m_isPressingJump) return; // 이미 누르는 중이면 무시
 
-    // 1단 점프: 땅에 있을 때 → 꾹 누르기 방식
+    // 1단 땅에 있을 때 꾹 누르기 방식
     if (m_jumpCount == 0)
     {
         m_isPressingJump = true;
         m_jumpPressTime = 0.0f;
         m_jumpX = m_pDino->GetDirection().x;
     }
-    // 2단 점프: 공중에 있을 때 → 클릭 순간 바로 점프
+    // 2단 점프 공중에 있으면 바로 점프한번더!
     else if (m_jumpCount == 1)
     {
         m_pDino->ChangeBitmapInfo(m_pJumpBitmapInfo, 18, 20.0f);
 
         // 현재 높이에서 바로 점프 (고정 높이)
         Vector2f dinoPos = m_pDino->GetPosition();
-        m_jumpTarget = dinoPos.y - 200.0f;   // 현재 위치에서 200px 위로
+        m_jumpTarget = dinoPos.y - 200.0f;   // 현재 위치에서 200 위로
         m_jumpDuration = 800.0f;              // 고정 시간
         m_jumpTime = 0.0f;
         m_jumpCount++;
         m_isOnGround = false;
 
-        // 2단 점프 시작 Y 기준을 현재 위치로 재설정
+        // y시작위지치준으로 점프
         m_jumpStartY = dinoPos.y;
     }
 }
@@ -544,20 +542,16 @@ void DinoGame::OnLButtonUp(int x, int y)
 
     m_isPressingJump = false;
 
-    // 누른 시간에 따라 점프 높이/시간 결정
-    // 최소 100ms, 최대 500ms 기준
+    // 누른 시간 점프 높이/시간 결정
     float pressTime = m_jumpPressTime > 620.0f ? 620.0f : m_jumpPressTime;    
     float ratio = pressTime / 620.0f; // 0.0 ~ 1.0
 
-    float jumpHeight = 150.0f + ratio * 200.0f; // 최소150 ~ 최대350 픽셀
+    float jumpHeight = 150.0f + ratio * 200.0f; // 최소150 ~ 최대350
     m_jumpTarget = 620.0f - jumpHeight;      // y가 작을수록 위
-    m_jumpDuration = 620.0f + ratio * 620.0f;  // 최소500 ~ 최대1000ms
+    m_jumpDuration = 620.0f + ratio * 620.0f;  // 최소500 ~ 최대1000
     m_jumpTime = 0.0f;
     m_jumpCount++;
     m_isOnGround = false;
 }
 
 
-    // 3. 더블버퍼링 셋업
-    // 4. 리소스 로딩 (png)
-    // 5. 플레이어 생성
