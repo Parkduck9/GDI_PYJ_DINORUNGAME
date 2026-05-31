@@ -325,8 +325,8 @@ void DinoGame::UpdateWallInfo() {
     float spawnY = 0.0f;
     if (isCoin)
     {
-        // ÄíÅ°: 100 ~ 620 ÀüÃ¼ ·£´ı
-        spawnY = 100.0f + (rand() % 520); // 100 ~ 620
+        // ÄíÅ°: 70 ~ 620 ÀüÃ¼ ·£´ı
+        spawnY = 100.0f + (rand() % 550); // 100 ~ 650
     }
     else
     {
