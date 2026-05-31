@@ -120,9 +120,9 @@ void DinoGame::LogicUpdate()
     UpdateWallInfo();
     
     //점수: 시간 경과
-    if ((m_gameTime) > 1000.0f)
+    if (m_gameTime > 3000.0f)
     {
-        //m_score += 0.001f;
+        m_score += (int)(m_fDeltaTime * 0.001f);
     }
 
     //충돌 체크
@@ -457,6 +457,7 @@ void DinoGame::Render()
 
             SelectObject(hReadyDC, hOld);
             DeleteDC(hReadyDC);
+
         }
 
         HPEN hPen = CreatePen(PS_SOLID, 4, RGB(255, 0, 0));
@@ -499,6 +500,17 @@ void DinoGame::Render()
             SelectObject(hEndDC, hOld);
             DeleteDC(hEndDC);
         }
+        wchar_t scoreText[64];
+        swprintf_s(scoreText, L"SCORE:\n \t%d", m_score);
+        SetBkMode(m_hBackDC, TRANSPARENT);
+        SetTextColor(m_hBackDC, RGB(0, 0, 0));
+        HFONT hFont = CreateFont(48, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            DEFAULT_QUALITY, DEFAULT_PITCH, L"Arial");
+        HFONT hOldFont = (HFONT)SelectObject(m_hBackDC, hFont);
+        TextOut(m_hBackDC, m_width / 2 - 500, 280, scoreText, wcslen(scoreText));
+        SelectObject(m_hBackDC, hOldFont);
+        DeleteObject(hFont);
 
         // 디버그용 빨간 박스
         HPEN hPen = CreatePen(PS_SOLID, 4, RGB(255, 0, 0));
@@ -717,5 +729,35 @@ void DinoGame::StartGame()
 void DinoGame::RestartGame()
 {
     m_gameState = GameState::Start;
-}
 
+    // 점수/타이머 리셋
+    m_score = 0;
+    m_gameTime = 0.0f;
+    m_spawnTimer = 0.0f;
+    m_spawnInterval = 2000.0f;
+
+    // 기존 오브젝트 삭제
+    for (int i = 0; i < 10; ++i)
+    {
+        if (m_pObjects[i])
+        {
+            delete m_pObjects[i];
+            m_pObjects[i] = nullptr;
+        }
+    }
+
+    // 점프 상태 리셋
+    m_jumpCount = 0;
+    m_isOnGround = true;
+    m_isPressingJump = false;
+    m_jumpTime = 0.0f;
+    m_jumpPressTime = 0.0f;
+    m_mapScrollX = 0.0f;
+
+    // 플레이어 위치 리셋
+    if (m_pDino)
+    {
+        m_pDino->SetPosition(800.0f, 620.0f);
+        m_pDino->ChangeBitmapInfo(m_pPlayerBitmapInfo, 20, 50.0f);
+    }
+}
