@@ -93,7 +93,12 @@ private:
 	Mouse_Pos m_PlayerTargetPos = { 0, 0 };
 
 	GameObject* m_pDino = nullptr;
-	GameObject* m_pWalls[10] = {};
+	GameObject* m_pObjects[10] = {};
+	float m_spawnTimer = 0.0f;
+	float m_spawnInterval = 2000.0f;
+	float m_gameTime = 0.0f;
+
+
 
 	using BitmapInfo = renderHelp::BitmapInfo;
 
@@ -101,6 +106,8 @@ private:
 	BitmapInfo* m_pJumpBitmapInfo = nullptr;
 
 	BitmapInfo* m_pMapBitmapInfo = nullptr;
+
+	BitmapInfo* m_pCookieBitmapInfo = nullptr;
 
 	BitmapInfo* m_pWallBitmapInfo = nullptr;
 };

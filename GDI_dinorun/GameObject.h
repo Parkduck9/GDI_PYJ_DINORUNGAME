@@ -99,7 +99,10 @@ public:
 
 	void SetColliderCircle(float radius);
 	void SetColliderBox(float halfWidth, float halfHeight);
-
+	// public 접근자 추가
+	ColliderBox* GetColliderBox() const { return m_pColliderBox; }
+	ColliderCircle* GetColliderCircle() const { return m_pColliderCircle; }
+	void SetBitmapInfo(BitmapInfo* bitmapInfo, int frameCount); // 프레임 수 지정 버전
 protected:
 	void DrawCollider(HDC hdc);
 
@@ -130,4 +133,5 @@ protected:
 	// Collider
 	ColliderCircle* m_pColliderCircle = nullptr;
 	ColliderBox* m_pColliderBox = nullptr;
+
 };

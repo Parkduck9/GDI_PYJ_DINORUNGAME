@@ -38,7 +38,21 @@ void GameObject::SetBitmapInfo(BitmapInfo* bitmapInfo)
 		m_frameXY[i].y = 0;
 	}
 }
+void GameObject::SetBitmapInfo(BitmapInfo* bitmapInfo, int frameCount)
+{
+	assert(m_pBitmapInfo == nullptr && "BitmapInfo must be null!");
 
+	m_pBitmapInfo = bitmapInfo;
+	m_frameCount = frameCount;
+	m_frameWidth = m_pBitmapInfo->GetWidth() / frameCount;
+	m_frameHeight = m_pBitmapInfo->GetHeight();
+
+	for (int i = 0; i < frameCount; ++i)
+	{
+		m_frameXY[i].x = i * m_frameWidth;
+		m_frameXY[i].y = 0;
+	}
+}
 void GameObject::ChangeBitmapInfo(BitmapInfo* bitmapInfo, int frameCount, float m_frameJumpDuration)
 {
 	m_pBitmapInfo = bitmapInfo;

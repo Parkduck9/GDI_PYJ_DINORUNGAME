@@ -40,7 +40,7 @@ bool DinoGame::Initialize()
     m_pPlayerBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/GUGARUN.png");
     m_pJumpBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/JumpGuGuGaGa.png");
     m_pMapBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/antarcticamap.png");
-
+    m_pCookieBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/GuGaCookie.png");
 #pragma region endregion
   
     CreatePlayer();
@@ -103,6 +103,60 @@ void DinoGame::LogicUpdate()
     UpdateMapInfo();
     UpdateWallInfo();
     
+    // ── 점수: 시간 경과 ──
+    if (m_gameTime > 3000.0f)
+        m_score += (int)(m_fDeltaTime * 0.01f);
+
+    // ── 충돌 체크 ──
+    if (m_pDino)
+    {
+        learning::ColliderBox* dinoBox = m_pDino->GetColliderBox();
+
+        for (int i = 0; i < 10; ++i)
+        {
+            if (m_pObjects[i] == nullptr) continue;
+
+            bool hit = false;
+
+            if (m_pObjects[i]->Type() == ObjectType::ITEM)
+            {
+                // 쿠키 → Circle vs Box 충돌
+                // 간단하게: 다이노 박스 중심과 쿠키 원의 거리로 체크
+                learning::ColliderCircle* coinCircle = m_pObjects[i]->GetColliderCircle();
+                if (dinoBox && coinCircle)
+                {
+                    // 박스 중심과 원 중심 거리 비교
+                    float dx = dinoBox->center.x - coinCircle->center.x;
+                    float dy = dinoBox->center.y - coinCircle->center.y;
+                    float dist = sqrt(dx * dx + dy * dy);
+                    hit = dist < (coinCircle->radius + 43.0f); // 반지름 + 박스 근사값
+                }
+            }
+            else if (m_pObjects[i]->Type() == ObjectType::Wall)
+            {
+                // 벽 → Box vs Box 충돌
+                learning::ColliderBox* wallBox = m_pObjects[i]->GetColliderBox();
+                if (dinoBox && wallBox)
+                    hit = learning::Intersect(*dinoBox, *wallBox);
+            }
+            if (hit)
+            {
+                if (m_pObjects[i]->Type() == ObjectType::ITEM)
+                {
+                    m_score += 100;
+                    delete m_pObjects[i];
+                    m_pObjects[i] = nullptr;
+                }
+            }
+        }
+    }
+
+    // 오브젝트 업데이트
+    for (int i = 0; i < 10; ++i)
+    {
+        if (m_pObjects[i]) m_pObjects[i]->Update(m_fDeltaTime);
+    }
+
     if (m_pDino) m_pDino->Update(m_fDeltaTime);
 }
 
@@ -111,8 +165,8 @@ void DinoGame::CreatePlayer()
     GameObject* pNewObject = new GameObject(ObjectType::PLAYER);
 
     pNewObject->SetName("Player");
-    pNewObject->SetPosition(300.0f, 620.0f);
-    pNewObject->SetSpeed(0.15f); // 일단, 임의로 설정  
+    pNewObject->SetPosition(800.0f, 620.0f);
+    pNewObject->SetSpeed(0.22f); // 일단, 임의로 설정  
 
     pNewObject->SetWidth(200); // 일단, 임의로 설정
     pNewObject->SetHeight(113); // 일단, 임의로 설정
@@ -196,7 +250,7 @@ void DinoGame::UpdateDinoInfo()
 
             if (dirNorm != m_lastDirNorm) // 방향 바뀔 때만
             {
-                float speed = (dirNorm < 0) ? 50.0f : 150.0f; // 왼쪽 빠름, 오른쪽 느림
+                float speed = (dirNorm < 0) ? 50.0f : 100.0f; // 왼쪽 빠름, 오른쪽 느림
                 m_pDino->ChangeBitmapInfo(m_pPlayerBitmapInfo, 20, speed);
                 m_lastDirNorm = dirNorm;
             }
@@ -239,7 +293,90 @@ void DinoGame::UpdateDinoInfo()
     m_pDino->SetPosition(dinoPos.x, dinoPos.y);
 }
 void DinoGame::UpdateWallInfo() {
+    const float GAME_START_DELAY = 3000.0f; // 3초 후부터 스폰
+    const float SCREEN_RIGHT = 1124.0f;     // 화면 오른쪽 경계
+
+    m_gameTime += m_fDeltaTime;
+
+    // ── 오브젝트 이동 & 화면 밖 삭제 ──
+    for (int i = 0; i < 10; ++i)
+    {
+        if (m_pObjects[i] == nullptr) continue;
+
+        Vector2f pos = m_pObjects[i]->GetPosition();
+
+        // 화면 오른쪽 벗어나면 삭제
+        if (pos.x > SCREEN_RIGHT)
+        {
+            delete m_pObjects[i];
+            m_pObjects[i] = nullptr;
+            continue;
+        }
+    }
+
+    // ── 3초 이후부터 스폰 ──
+    if (m_gameTime < GAME_START_DELAY) return;
+
+    m_spawnTimer += m_fDeltaTime;
+    if (m_spawnTimer < m_spawnInterval) return;
+    m_spawnTimer = 0.0f;
+
+    // 빈 슬롯 찾기
+    int emptySlot = -1;
+    for (int i = 0; i < 10; ++i)
+    {
+        if (m_pObjects[i] == nullptr)
+        {
+            emptySlot = i;
+            break;
+        }
+    }
+    if (emptySlot == -1) return; // 빈 슬롯 없으면 스킵
+
+    // 랜덤으로 벽 or 쿠키 결정
+    bool isCoin = (rand() % 2 == 0);
+
+    GameObject* pNew = new GameObject(isCoin ? ObjectType::ITEM : ObjectType::Wall);
+
+    // y 위치: 코인은 살짝 위, 벽은 바닥
+    float spawnY = 0.0f;
+    if (isCoin)
+    {
+        // 쿠키: 100 ~ 620 전체 랜덤
+        spawnY = 100.0f + (rand() % 521); // 100 ~ 620
+    }
+    else
+    {
+        // 벽: 620(바닥) ~ 최대점프 높이 사이
+        // 최대점프 = 620 - 350 = 270 (jumpHeight 최대 350px)
+        // 너무 낮으면 항상 피할 수 없으니 최소 점프(150px) 아래로
+        // → 620 ~ 470 사이 (620 - 150 = 470)
+        spawnY = 470.0f + (rand() % 151); // 470 ~ 620
+    }
+    pNew->SetPosition(-50.0f, spawnY);  // 화면 왼쪽 밖에서 시작
+    pNew->SetDirection(Vector2f(1.0f, 0.0f));  // 오른쪽으로
+    pNew->SetSpeed(0.15f);  // 맵 스크롤 속도와 동일
+
+    pNew->SetWidth(60);
+    pNew->SetHeight(60);
+
     
+    if (isCoin)
+    {
+        pNew->SetColliderCircle(25.0f);
+        if (m_pCookieBitmapInfo)
+            pNew->SetBitmapInfo(m_pCookieBitmapInfo, 1);
+    }
+    else
+    {
+        pNew->SetColliderBox(60.0f, 60.0f);
+        if (m_pWallBitmapInfo)
+            pNew->SetBitmapInfo(m_pWallBitmapInfo, 1);
+    }
+
+    m_pObjects[emptySlot] = pNew;  // ← 이게 빠져서 쿠키가 안 나온 거예요!
+
+
 }
 
 void DinoGame::UpdateMapInfo() {
@@ -311,10 +448,25 @@ void DinoGame::Render()
         SelectObject(hMapDC, hOld);
         DeleteDC(hMapDC);
     }
+    for (int i = 0; i < 10; ++i)
+        if (m_pObjects[i]) m_pObjects[i]->Render(m_hBackDC);
 
     if (m_pDino) m_pDino->Render(m_hBackDC);
-    //메모리 DC에 그려진 결과를 실제 DC(m_hFrontDC)로 복사
+
+    // ── 점수판 추가! ──
+    wchar_t scoreText[64];
+    swprintf_s(scoreText, L"SCORE: %d", m_score);
+    SetBkMode(m_hBackDC, TRANSPARENT);
+    SetTextColor(m_hBackDC, RGB(255, 255, 0));
+    HFONT hFont = CreateFont(36, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        DEFAULT_QUALITY, DEFAULT_PITCH, L"Arial");
+    HFONT hOldFont = (HFONT)SelectObject(m_hBackDC, hFont);
+    TextOut(m_hBackDC, 20, 20, scoreText, wcslen(scoreText));
+    SelectObject(m_hBackDC, hOldFont);
+    DeleteObject(hFont);
     BitBlt(m_hFrontDC, 0, 0, m_width, m_height, m_hBackDC, 0, 0, SRCCOPY);
+    //메모리 DC에 그려진 결과를 실제 DC(m_hFrontDC)로 복사
 }
 
 void DinoGame::OnResize(int width, int height)
@@ -373,7 +525,7 @@ void DinoGame::OnLButtonDown(int x, int y)
         // 현재 높이에서 바로 점프 (고정 높이)
         Vector2f dinoPos = m_pDino->GetPosition();
         m_jumpTarget = dinoPos.y - 200.0f;   // 현재 위치에서 200px 위로
-        m_jumpDuration = 600.0f;              // 고정 시간
+        m_jumpDuration = 800.0f;              // 고정 시간
         m_jumpTime = 0.0f;
         m_jumpCount++;
         m_isOnGround = false;
