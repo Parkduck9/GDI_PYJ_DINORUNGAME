@@ -12,6 +12,13 @@ namespace renderHelp
 	class BitmapInfo;
 }
 
+enum class GameState
+{	
+	Ready,
+	Start,
+	GameOver
+};
+
 class DinoGame : public NzWndBase
 {
 public:
@@ -55,6 +62,12 @@ private:
 	HBITMAP m_hBackBitmap = nullptr;
 	HBITMAP m_hDefaultBitmap = nullptr;
 
+	void ReadyGame();
+	void StartGame();
+	void RestartGame();
+
+
+
 	GameTimer* m_pGameTimer = nullptr;
 	float m_fDeltaTime = 0.0f;
 	float m_fFrameCount = 0.0f;
@@ -76,6 +89,17 @@ private:
 
 	bool m_isOnGround = true;
 
+	GameState m_gameState = GameState::Ready;
+
+	// 게임 시작 시 버튼
+	RECT m_startButton = { 395, 385, 655, 465 };
+	RECT m_howButton = { 395, 475, 655, 560 };
+	RECT m_exitButton = { 395, 575, 655, 655 };
+
+
+	// 게임 종료 시 버튼
+	RECT m_restartButton = { 15, 615, 260, 700 };
+	RECT m_gameExitButton = { 745, 615, 990, 700 };
 
 	int m_score = 0;
 
@@ -110,4 +134,7 @@ private:
 	BitmapInfo* m_pCookieBitmapInfo = nullptr;
 
 	BitmapInfo* m_pWallBitmapInfo = nullptr;
+
+	BitmapInfo* m_pReadyBitmapInfo = nullptr;
+	BitmapInfo* m_pEndBitmapInfo = nullptr;
 };

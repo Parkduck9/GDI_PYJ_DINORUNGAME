@@ -37,6 +37,9 @@ bool DinoGame::Initialize()
 
     // 필요한 리소스를 로드해볼까요
 #pragma region resource
+    m_pReadyBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/GameMainMenu.png");
+    m_pEndBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/EndgameScene.png");
+    
     m_pPlayerBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/GUGARUN.png");
     m_pJumpBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/JumpGuGuGaGa.png");
     m_pMapBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/antarcticamap.png");
@@ -99,7 +102,19 @@ void DinoGame::FixedUpdate()
 
 void DinoGame::LogicUpdate()
 {
-    
+    switch (m_gameState)
+    {
+    case GameState::Ready:
+        ReadyGame();
+        return;
+
+    case GameState::Start:
+        StartGame();
+        break;
+
+    case GameState::GameOver:
+        return;
+    }
     UpdateDinoInfo();
     UpdateMapInfo();
     UpdateWallInfo();
@@ -142,6 +157,12 @@ void DinoGame::LogicUpdate()
             }
             if (hit)
             {
+                if (m_pObjects[i]->Type() == ObjectType::Wall)
+                {
+                    m_gameState = GameState::GameOver;
+                    return;
+                }
+
                 if (m_pObjects[i]->Type() == ObjectType::ITEM)
                 {
                     m_score += 100;
@@ -268,8 +289,10 @@ void DinoGame::UpdateDinoInfo()
     }
 
     //화면 밖 제한
-    float halfW = 100.0f; // 캐릭터 절반 너비
+    float halfW = 100.0f;
+
     dinoPos.x = dinoPos.x < halfW ? halfW : dinoPos.x;
+    dinoPos.x = dinoPos.x > m_width - halfW ? m_width - halfW : dinoPos.x;
 
     m_pDino->SetPosition(dinoPos.x, dinoPos.y);
 }
@@ -415,6 +438,87 @@ void DinoGame::Render()
 {
     //Clear the back buffer
     ::PatBlt(m_hBackDC, 0, 0, m_width, m_height, WHITENESS);
+    if (m_gameState == GameState::Ready)
+    {
+        if (m_pReadyBitmapInfo)
+        {
+            HDC hReadyDC = CreateCompatibleDC(m_hBackDC);
+            HBITMAP hOld = (HBITMAP)SelectObject(hReadyDC, m_pReadyBitmapInfo->GetBitmapHandle());
+
+            StretchBlt(
+                m_hBackDC,
+                0, 0, m_width, m_height,
+                hReadyDC,
+                0, 0,
+                m_pReadyBitmapInfo->GetWidth(),
+                m_pReadyBitmapInfo->GetHeight(),
+                SRCCOPY
+            );
+
+            SelectObject(hReadyDC, hOld);
+            DeleteDC(hReadyDC);
+        }
+
+        HPEN hPen = CreatePen(PS_SOLID, 4, RGB(255, 0, 0));
+        HPEN hOldPen = (HPEN)SelectObject(m_hBackDC, hPen);
+        HBRUSH hOldBrush = (HBRUSH)SelectObject(m_hBackDC, GetStockObject(NULL_BRUSH));
+
+        Rectangle(m_hBackDC, m_startButton.left, m_startButton.top,
+            m_startButton.right, m_startButton.bottom);
+
+        Rectangle(m_hBackDC, m_howButton.left, m_howButton.top,
+            m_howButton.right, m_howButton.bottom);
+
+        Rectangle(m_hBackDC, m_exitButton.left, m_exitButton.top,
+            m_exitButton.right, m_exitButton.bottom);
+
+        SelectObject(m_hBackDC, hOldPen);
+        SelectObject(m_hBackDC, hOldBrush);
+        DeleteObject(hPen);
+
+        BitBlt(m_hFrontDC, 0, 0, m_width, m_height, m_hBackDC, 0, 0, SRCCOPY);
+        return;
+    }
+    else if (m_gameState == GameState::GameOver)
+    {
+        if (m_pEndBitmapInfo)
+        {
+            HDC hEndDC = CreateCompatibleDC(m_hBackDC);
+            HBITMAP hOld = (HBITMAP)SelectObject(hEndDC, m_pEndBitmapInfo->GetBitmapHandle());
+
+            StretchBlt(
+                m_hBackDC,
+                0, 0, m_width, m_height,
+                hEndDC,
+                0, 0,
+                m_pEndBitmapInfo->GetWidth(),
+                m_pEndBitmapInfo->GetHeight(),
+                SRCCOPY
+            );
+
+            SelectObject(hEndDC, hOld);
+            DeleteDC(hEndDC);
+        }
+
+        // 디버그용 빨간 박스
+        HPEN hPen = CreatePen(PS_SOLID, 4, RGB(255, 0, 0));
+        HPEN hOldPen = (HPEN)SelectObject(m_hBackDC, hPen);
+        HBRUSH hOldBrush = (HBRUSH)SelectObject(m_hBackDC, GetStockObject(NULL_BRUSH));
+
+        Rectangle(m_hBackDC, m_restartButton.left, m_restartButton.top,
+            m_restartButton.right, m_restartButton.bottom);
+
+        Rectangle(m_hBackDC, m_gameExitButton.left, m_gameExitButton.top,
+            m_gameExitButton.right, m_gameExitButton.bottom);
+
+        SelectObject(m_hBackDC, hOldPen);
+        SelectObject(m_hBackDC, hOldBrush);
+        DeleteObject(hPen);
+
+        BitBlt(m_hFrontDC, 0, 0, m_width, m_height, m_hBackDC, 0, 0, SRCCOPY);
+        return;
+    }
+
 
     if (m_pMapBitmapInfo)
     {
@@ -507,6 +611,50 @@ void DinoGame::OnLButtonDown(int x, int y)
 {
     std::cout << __FUNCTION__ << std::endl;
     std::cout << "x: " << x << ", y: " << y << std::endl;
+    // 대기 화면 버튼 사용
+    if (m_gameState == GameState::Ready)
+    {
+        POINT pt = { x, y };
+
+        if (PtInRect(&m_startButton, pt))
+        {
+            m_gameState = GameState::Start;
+            return;
+        }
+
+        if (PtInRect(&m_howButton, pt))
+        {
+            MessageBox(m_hWnd, L"마우스를 누르고 떼면 점프합니다.\n곰을 피하고 쿠키를 먹으세요!", L"게임 방법", MB_OK);
+            return;
+        }
+
+        if (PtInRect(&m_exitButton, pt))
+        {
+            PostQuitMessage(0);
+            return;
+        }
+
+        return;
+    }
+    // 게임 종료 화면 버튼 사용 
+    if (m_gameState == GameState::GameOver)
+    {
+        POINT pt = { x, y };
+
+        if (PtInRect(&m_restartButton, pt))
+        {
+            RestartGame();
+            return;
+        }
+
+        if (PtInRect(&m_gameExitButton, pt))
+        {
+            PostQuitMessage(0);
+            return;
+        }
+
+        return;
+    }
 
     if (m_isPressingJump) return; // 이미 누르는 중이면 무시
 
@@ -556,4 +704,18 @@ void DinoGame::OnLButtonUp(int x, int y)
     m_isOnGround = false;
 }
 
+void DinoGame::ReadyGame(){
+    BitBlt(m_hFrontDC, 0, 0, m_width, m_height, m_hBackDC, 0, 0, SRCCOPY);
+    // 시작 대기 상태
+}
+
+void DinoGame::StartGame()
+{
+    // 게임 진행 상태
+}
+
+void DinoGame::RestartGame()
+{
+    m_gameState = GameState::Start;
+}
 
