@@ -88,6 +88,21 @@ void DinoGame::Run()
 
 void DinoGame::Finalize()
 {
+    for (int i = 0; i < 10; ++i)
+    {
+        if (m_pObjects[i])
+        {
+            delete m_pObjects[i];
+            m_pObjects[i] = nullptr;
+        }
+    }
+
+    if (m_pDino)
+    {
+        delete m_pDino;
+        m_pDino = nullptr;
+    }
+
     delete m_pGameTimer;
     m_pGameTimer = nullptr;
 
@@ -257,6 +272,11 @@ void DinoGame::UpdateDinoInfo()
                 m_lastDirNorm = dirNorm;
             }
         }
+        else
+        {
+            m_pDino->SetDirection(Vector2f(0.0f, 0.0f));
+            m_lastDirNorm = 0.0f;
+        }
     }
 
     // 점프 y계산
@@ -414,17 +434,12 @@ void DinoGame::UpdateMapInfo() {
     }
 
 }
-void DinoGame::ResolveWallOverLap() { // 적이 안겹치게 하는 함수
-    
-
-}
 
 void DinoGame::Update()
 {
     m_pGameTimer->Tick();
-    LogicUpdate();
-
     m_fDeltaTime = m_pGameTimer->DeltaTimeMS();
+    LogicUpdate();
     m_fFrameCount += m_fDeltaTime;
 
     while (m_fFrameCount >= 200.0f)
@@ -460,23 +475,7 @@ void DinoGame::Render()
 
         }
 
-        HPEN hPen = CreatePen(PS_SOLID, 4, RGB(255, 0, 0));
-        HPEN hOldPen = (HPEN)SelectObject(m_hBackDC, hPen);
-        HBRUSH hOldBrush = (HBRUSH)SelectObject(m_hBackDC, GetStockObject(NULL_BRUSH));
-
-        Rectangle(m_hBackDC, m_startButton.left, m_startButton.top,
-            m_startButton.right, m_startButton.bottom);
-
-        Rectangle(m_hBackDC, m_howButton.left, m_howButton.top,
-            m_howButton.right, m_howButton.bottom);
-
-        Rectangle(m_hBackDC, m_exitButton.left, m_exitButton.top,
-            m_exitButton.right, m_exitButton.bottom);
-
-        SelectObject(m_hBackDC, hOldPen);
-        SelectObject(m_hBackDC, hOldBrush);
-        DeleteObject(hPen);
-
+       
         BitBlt(m_hFrontDC, 0, 0, m_width, m_height, m_hBackDC, 0, 0, SRCCOPY);
         return;
     }
@@ -501,7 +500,7 @@ void DinoGame::Render()
             DeleteDC(hEndDC);
         }
         wchar_t scoreText[64];
-        swprintf_s(scoreText, L"SCORE:\n \t%d", m_score);
+        swprintf_s(scoreText, L"SCORE : %d", m_score);
         SetBkMode(m_hBackDC, TRANSPARENT);
         SetTextColor(m_hBackDC, RGB(0, 0, 0));
         HFONT hFont = CreateFont(48, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
@@ -512,20 +511,6 @@ void DinoGame::Render()
         SelectObject(m_hBackDC, hOldFont);
         DeleteObject(hFont);
 
-        // 디버그용 빨간 박스
-        HPEN hPen = CreatePen(PS_SOLID, 4, RGB(255, 0, 0));
-        HPEN hOldPen = (HPEN)SelectObject(m_hBackDC, hPen);
-        HBRUSH hOldBrush = (HBRUSH)SelectObject(m_hBackDC, GetStockObject(NULL_BRUSH));
-
-        Rectangle(m_hBackDC, m_restartButton.left, m_restartButton.top,
-            m_restartButton.right, m_restartButton.bottom);
-
-        Rectangle(m_hBackDC, m_gameExitButton.left, m_gameExitButton.top,
-            m_gameExitButton.right, m_gameExitButton.bottom);
-
-        SelectObject(m_hBackDC, hOldPen);
-        SelectObject(m_hBackDC, hOldBrush);
-        DeleteObject(hPen);
 
         BitBlt(m_hFrontDC, 0, 0, m_width, m_height, m_hBackDC, 0, 0, SRCCOPY);
         return;
@@ -621,8 +606,8 @@ void DinoGame::OnMouseMove(int x, int y)
 }
 void DinoGame::OnLButtonDown(int x, int y)
 {
-    std::cout << __FUNCTION__ << std::endl;
-    std::cout << "x: " << x << ", y: " << y << std::endl;
+    //std::cout << __FUNCTION__ << std::endl;
+    //std::cout << "x: " << x << ", y: " << y << std::endl;
     // 대기 화면 버튼 사용
     if (m_gameState == GameState::Ready)
     {
@@ -636,7 +621,7 @@ void DinoGame::OnLButtonDown(int x, int y)
 
         if (PtInRect(&m_howButton, pt))
         {
-            MessageBox(m_hWnd, L"마우스를 누르고 떼면 점프합니다.\n곰을 피하고 쿠키를 먹으세요!", L"게임 방법", MB_OK);
+            MessageBox(m_hWnd, L"                구구가가의 위치보다 \n      앞이나 뒤를 클릭해 두번까지 점프해\n           곰을 피하고 쿠키를 먹으세요!", L"게임 방법", MB_OK);
             return;
         }
 

@@ -51,7 +51,6 @@ private:
 
 	void UpdateDinoInfo();
 	void UpdateWallInfo();
-	void ResolveWallOverLap();
 
 	//GameObject* GetPlayer() const { return (GameObject*)m_GameObjectPtrTable[0]; }
 

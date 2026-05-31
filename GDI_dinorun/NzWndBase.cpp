@@ -55,9 +55,19 @@ bool NzWndBase::Create(const wchar_t* className, const wchar_t* windowName, int 
 	AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, false);
 
 	//[CHECK] AdjustWindowRect()의 의미는?
-	m_hWnd = CreateWindowEx(NULL, MAKEINTATOM(classId), L"", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-		rc.right - rc.left, rc.bottom - rc.top, HWND(), HMENU(), HINSTANCE(), NULL);
+	int windowWidth = rc.right - rc.left;
+	int windowHeight = rc.bottom - rc.top;
 
+	int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+	int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+	int windowX = (screenWidth - windowWidth) / 2;
+	int windowY = (screenHeight - windowHeight) / 2;
+
+	m_hWnd = CreateWindowEx(NULL, MAKEINTATOM(classId), L"", WS_OVERLAPPEDWINDOW,
+		windowX, windowY,
+		windowWidth, windowHeight,
+		HWND(), HMENU(), HINSTANCE(), NULL);
 	if (NULL == m_hWnd) return false;
 
 	::SetWindowText((HWND)m_hWnd, windowName);

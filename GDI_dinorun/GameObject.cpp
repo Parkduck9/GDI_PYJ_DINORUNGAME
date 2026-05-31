@@ -92,7 +92,7 @@ void GameObject::Update(float deltaTime)
 void GameObject::Render(HDC hdc)
 {
 	DrawBitmap(hdc);
-	DrawCollider(hdc);
+	//DrawCollider(hdc);
 }
 
 
