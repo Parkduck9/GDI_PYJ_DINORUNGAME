@@ -41,6 +41,7 @@ bool DinoGame::Initialize()
     m_pJumpBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/JumpGuGuGaGa.png");
     m_pMapBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/antarcticamap.png");
     m_pCookieBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/GuGaCookie.png");
+    m_pWallBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/BearWall.png");
 #pragma region endregion
   
     CreatePlayer();
@@ -104,8 +105,10 @@ void DinoGame::LogicUpdate()
     UpdateWallInfo();
     
     //점수: 시간 경과
-    if (m_gameTime > 1000.0f)
-        m_score += (int)(m_fDeltaTime * 1.0f);
+    if ((m_gameTime) > 1000.0f)
+    {
+        //m_score += 0.001f;
+    }
 
     //충돌 체크
     if (m_pDino)
@@ -175,26 +178,6 @@ void DinoGame::CreatePlayer()
     m_pDino = pNewObject;
 }
 
-void DinoGame::CreateEnemy() {
-    GameObject* pNewObject = new GameObject(ObjectType::ENEMY);
-    pNewObject->SetName("Enemy");
-
-    //float x = m_EnemySpawnPos.x;
-    //float y = m_EnemySpawnPos.y;
-
-   // m_EnemySpawnPos = { 0, 0 };
-
-    pNewObject->SetSpeed(1.0f); 
-
-
-    pNewObject->SetWidth(100); 
-    pNewObject->SetHeight(100); 
-
-    pNewObject->SetColliderCircle(50.0f); // 일단, 임의로 설정. 오브젝트 설정할 거 다 하고 나서 하자.
-    //pNewObject->SetBitmapInfo(m_pEnemyWallInfo);
-    int i = 0;
-
-}
 
 void DinoGame::CreateWall()
 {
@@ -212,7 +195,7 @@ void DinoGame::CreateWall()
     pNewObject->SetWidth(100); // 일단, 임의로 설정
     pNewObject->SetHeight(100); // 일단, 임의로 설정
 
-    pNewObject->SetColliderCircle(50.0f); // 일단, 임의로 설정. 오브젝트 설정할 거 다 하고 나서 하자.
+    pNewObject->SetColliderBox(30.0f,10.0f); // 일단, 임의로 설정. 오브젝트 설정할 거 다 하고 나서 하자.
     //pNewObject->SetBitmapInfo(m_pEnemyWallInfo);
     int i = 0;
     
@@ -318,6 +301,8 @@ void DinoGame::UpdateWallInfo() {
     m_spawnTimer += m_fDeltaTime;
     if (m_spawnTimer < m_spawnInterval) return;
     m_spawnTimer = 0.0f;
+    // 다음 스폰 간격 랜덤: 1.5초 ~ 4초
+    m_spawnInterval = 1500.0f + (rand() % 2501);
 
     // 빈 슬롯 찾기
     int emptySlot = -1;
@@ -332,7 +317,7 @@ void DinoGame::UpdateWallInfo() {
     if (emptySlot == -1) return; // 빈 슬롯 없으면 스킵
 
     // 랜덤으로 벽 or 쿠키 결정
-    bool isCoin = (rand() % 2 == 0);
+    bool isCoin = (rand() % 100 < 40);
 
     GameObject* pNew = new GameObject(isCoin ? ObjectType::ITEM : ObjectType::Wall);
 
@@ -349,27 +334,44 @@ void DinoGame::UpdateWallInfo() {
         // 최대점프 = 620 - 350 = 270 (jumpHeight 최대 350)
         // 너무 낮으면 항상 피할 수 없으니 최소 점프150 아래로
         // → 620 ~ 470 사이 620 - 150 = 470
-        spawnY = 470.0f + (rand() % 151); // 470 ~ 620
+        spawnY = 620.0f;
     }
     pNew->SetPosition(-50.0f, spawnY);  // 화면 왼쪽 밖에서 시작
     pNew->SetDirection(Vector2f(1.0f, 0.0f));  // 오른쪽으로
     pNew->SetSpeed(0.15f);  // 맵 스크롤 속도와 동일
 
-    pNew->SetWidth(60);
-    pNew->SetHeight(60);
 
     
     if (isCoin)
     {
+        pNew->SetWidth(60);
+        pNew->SetHeight(60);
         pNew->SetColliderCircle(25.0f);
         if (m_pCookieBitmapInfo)
             pNew->SetBitmapInfo(m_pCookieBitmapInfo, 1);
     }
     else
     {
-        pNew->SetColliderBox(60.0f, 60.0f);
-        if (m_pWallBitmapInfo)
+        int wallHeight = 100 + (rand() % 201);
+        int wallWidth = 120;
+
+        pNew->SetWidth(wallWidth);
+        pNew->SetHeight(wallHeight);
+
+        float groundY = 620.0f + (113.0f / 2.0f);
+
+        // 곰 이미지 아래 투명 여백 보정
+        float footOffset = wallHeight * 0.12f;
+
+        float wallCenterY = groundY - (wallHeight / 2.0f) + footOffset;
+
+        pNew->SetPosition(-50.0f, wallCenterY);
+
+        pNew->SetColliderBox(wallWidth * 0.4f, wallHeight * 0.55f);
+
+        if (m_pWallBitmapInfo) {
             pNew->SetBitmapInfo(m_pWallBitmapInfo, 1);
+        }
     }
 
     m_pObjects[emptySlot] = pNew;  
