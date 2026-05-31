@@ -18,16 +18,19 @@ bool DinoGame::Initialize()
     const wchar_t* className = L"DinoGame";
     const wchar_t* windowName = L"DinoGame";
 
+    //윈도우 생성 
     if (false == __super::Create(className, windowName, 1024, 720))
     {
         return false;
     }
 
+    //클라이언트 영역 크기
     RECT rcClient = {};
     GetClientRect(m_hWnd, &rcClient);
     m_width = rcClient.right - rcClient.left;
     m_height = rcClient.bottom - rcClient.top;
 
+    //더블 버퍼링용 DC 생성
     m_hFrontDC = GetDC(m_hWnd);
     m_hBackDC = CreateCompatibleDC(m_hFrontDC);
     m_hBackBitmap = CreateCompatibleBitmap(m_hFrontDC, m_width, m_height);
@@ -39,7 +42,10 @@ bool DinoGame::Initialize()
 #pragma region resource
     m_pReadyBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/GameMainMenu.png");
     m_pEndBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/EndgameScene.png");
+    // 맵(시작화면 종료화면)
     
+
+    // 캐릭터 및 쿠키와 벽 리소스
     m_pPlayerBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/GUGARUN.png");
     m_pJumpBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/JumpGuGuGaGa.png");
     m_pMapBitmapInfo = renderHelp::CreateBitmapInfo(L"./Resource/antarcticamap.png");
@@ -87,7 +93,7 @@ void DinoGame::Run()
 }
 
 void DinoGame::Finalize()
-{
+{ // 메모리해제!
     for (int i = 0; i < 10; ++i)
     {
         if (m_pObjects[i])
@@ -110,7 +116,7 @@ void DinoGame::Finalize()
 }
 
 
-void DinoGame::FixedUpdate()
+void DinoGame::FixedUpdate() //지우면 오류가 나서 일단 살려뒀습니다
 {
 
 }
@@ -120,25 +126,26 @@ void DinoGame::LogicUpdate()
     switch (m_gameState)
     {
     case GameState::Ready:
-        ReadyGame();
+        ReadyGame();  // 시작화면
         return;
 
     case GameState::Start:
-        StartGame();
+        StartGame(); // 게임화면
         break;
 
     case GameState::GameOver:
-        return;
+        return; // 게임 오버 상태에서 업데이트 금지!
     }
+    // 게임 진행 중일 때 실행!
     UpdateDinoInfo();
     UpdateMapInfo();
     UpdateWallInfo();
     
     //점수: 시간 경과
-    if (m_gameTime > 3000.0f)
+    /*if (m_gameTime > 3000.0f)
     {
         m_score += (int)(m_fDeltaTime * 0.001f);
-    }
+    }*/ // 왜인지 점수가 안올라서 시간제에서 쿠키 먹으면 점수가 오르는것으로 변경
 
     //충돌 체크
     if (m_pDino)
@@ -165,7 +172,7 @@ void DinoGame::LogicUpdate()
             }
             else if (m_pObjects[i]->Type() == ObjectType::Wall)
             {
-                // 벽 → Box vs Box 충돌
+                // 벽 → Box vs Box 충돌 해서 계산!
                 learning::ColliderBox* wallBox = m_pObjects[i]->GetColliderBox();
                 if (dinoBox && wallBox)
                     hit = learning::Intersect(*dinoBox, *wallBox);
@@ -242,19 +249,19 @@ void DinoGame::UpdateDinoInfo()
 {
     if (!m_pDino) return;
 
-    // 누르고 있는 동안 시간 누적
+    // 마우스 좌클릭 누르고 있는 동안 시간 누적
     if (m_isPressingJump)
         m_jumpPressTime += m_fDeltaTime;
 
     Vector2f dinoPos = m_pDino->GetPosition();
 
-    // 점프 중이면 X방향 유지
+    // 점프 중이면 X방향 유지 (변경 없음!)
     if (!m_isOnGround)
     {
         m_pDino->SetDirection(Vector2f(m_jumpX, 0.0f));
 
     }
-    else // 마우스 따라다니기
+    else // 마우스 따라다니기 (땅에 있다고 판단시)
     {
         float targetX = (float)m_MousePos.x;
         float dir = targetX - dinoPos.x;
@@ -272,7 +279,7 @@ void DinoGame::UpdateDinoInfo()
                 m_lastDirNorm = dirNorm;
             }
         }
-        else
+        else // 목표 위치 근처 도달 시 정지
         {
             m_pDino->SetDirection(Vector2f(0.0f, 0.0f));
             m_lastDirNorm = 0.0f;
@@ -308,7 +315,7 @@ void DinoGame::UpdateDinoInfo()
         }
     }
 
-    //화면 밖 제한
+    //화면 밖 제한 
     float halfW = 100.0f;
 
     dinoPos.x = dinoPos.x < halfW ? halfW : dinoPos.x;
@@ -317,12 +324,12 @@ void DinoGame::UpdateDinoInfo()
     m_pDino->SetPosition(dinoPos.x, dinoPos.y);
 }
 void DinoGame::UpdateWallInfo() {
-    const float GAME_START_DELAY = 3000.0f; // 대략크 3초 후부터 스폰
+    const float GAME_START_DELAY = 3000.0f; // 대략 3초 후부터 스폰
     const float SCREEN_RIGHT = 1100.0f;     // 화면 오른쪽 경계
 
     m_gameTime += m_fDeltaTime;
 
-    // 오브젝트 이동 & 화면 밖 삭제
+    // 오브젝트 이동 & 화면 밖으로 나가면 삭제
     for (int i = 0; i < 10; ++i)
     {
         if (m_pObjects[i] == nullptr) continue;
@@ -338,7 +345,7 @@ void DinoGame::UpdateWallInfo() {
         }
     }
 
-    // 3초 이후부터 스폰
+    // 게임시작 3초 이후부터 스폰 
     if (m_gameTime < GAME_START_DELAY) return;
 
     m_spawnTimer += m_fDeltaTime;
@@ -359,7 +366,7 @@ void DinoGame::UpdateWallInfo() {
     }
     if (emptySlot == -1) return; // 빈 슬롯 없으면 스킵
 
-    // 랜덤으로 벽 or 쿠키 결정
+    // 랜덤으로 벽 or 쿠키 결정 (쿠키40% 벽60% 확률)
     bool isCoin = (rand() % 100 < 40);
 
     GameObject* pNew = new GameObject(isCoin ? ObjectType::ITEM : ObjectType::Wall);
@@ -373,11 +380,7 @@ void DinoGame::UpdateWallInfo() {
     }
     else
     {
-        // 벽: 620(바닥) ~ 최대점프 높이 사이
-        // 최대점프 = 620 - 350 = 270 (jumpHeight 최대 350)
-        // 너무 낮으면 항상 피할 수 없으니 최소 점프150 아래로
-        // → 620 ~ 470 사이 620 - 150 = 470
-        spawnY = 620.0f;
+        spawnY = 620.0f; // 곰돌이는 계속 같은 위치에서 태어나도록
     }
     pNew->SetPosition(-50.0f, spawnY);  // 화면 왼쪽 밖에서 시작
     pNew->SetDirection(Vector2f(1.0f, 0.0f));  // 오른쪽으로
@@ -453,10 +456,10 @@ void DinoGame::Render()
 {
     //Clear the back buffer
     ::PatBlt(m_hBackDC, 0, 0, m_width, m_height, WHITENESS);
-    if (m_gameState == GameState::Ready)
+    if (m_gameState == GameState::Ready) // 시작화면일 경우
     {
         if (m_pReadyBitmapInfo)
-        {
+        { // 시작화면 PNG 출력
             HDC hReadyDC = CreateCompatibleDC(m_hBackDC);
             HBITMAP hOld = (HBITMAP)SelectObject(hReadyDC, m_pReadyBitmapInfo->GetBitmapHandle());
 
@@ -479,10 +482,10 @@ void DinoGame::Render()
         BitBlt(m_hFrontDC, 0, 0, m_width, m_height, m_hBackDC, 0, 0, SRCCOPY);
         return;
     }
-    else if (m_gameState == GameState::GameOver)
+    else if (m_gameState == GameState::GameOver) // 게임 오버 화면
     {
         if (m_pEndBitmapInfo)
-        {
+        { // 게임 오버화면 출력
             HDC hEndDC = CreateCompatibleDC(m_hBackDC);
             HBITMAP hOld = (HBITMAP)SelectObject(hEndDC, m_pEndBitmapInfo->GetBitmapHandle());
 
@@ -499,7 +502,7 @@ void DinoGame::Render()
             SelectObject(hEndDC, hOld);
             DeleteDC(hEndDC);
         }
-        wchar_t scoreText[64];
+        wchar_t scoreText[64]; // 배경, 오브젝트, 플레이어, 점수등 출력
         swprintf_s(scoreText, L"SCORE : %d", m_score);
         SetBkMode(m_hBackDC, TRANSPARENT);
         SetTextColor(m_hBackDC, RGB(0, 0, 0));

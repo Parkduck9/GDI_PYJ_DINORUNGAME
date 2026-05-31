@@ -40,13 +40,13 @@ public:
 	virtual void Update(float deltaTime) = 0;
 	virtual void Render(HDC hdc) = 0;
 
-	void SetPosition(float x, float y) { m_pos = { x, y }; }
-	void SetDirection(Vector2f dir) { m_dir = dir; }
-	void SetSpeed(float speed) { m_speed = speed; }
+	void SetPosition(float x, float y) { m_pos = { x, y }; } // 위치 정보
+	void SetDirection(Vector2f dir) { m_dir = dir; } // 이동 방향
+	void SetSpeed(float speed) { m_speed = speed; } // 이동 속도
 	void SetName(const char* name);
-
-	void SetWidth(int width) { m_width = width; }
-	void SetHeight(int height) { m_height = height; }
+	 
+	void SetWidth(int width) { m_width = width; } // 화면 출려 ㄱX
+	void SetHeight(int height) { m_height = height; } // 화면 출력 Y
 
 	ObjectType Type() const { return m_type; }
 
@@ -59,7 +59,7 @@ public:
 
 protected:
 
-	void Move(float deltaTime)
+	void Move(float deltaTime) 
 	{
 		m_pos.x += m_dir.x * m_speed * deltaTime;
 		m_pos.y += m_dir.y * m_speed * deltaTime;
@@ -127,10 +127,10 @@ protected:
 	int m_frameIndex = 0;
 	int m_frameCount = 20; // 프레임 수
 
-	float m_frameTime = 0.0f;
-	float m_frameDuration = 50.0f;
+	float m_frameTime = 0.0f; // 누적 시간
+	float m_frameDuration = 50.0f; // 프레임 변경 주기
 	float m_frameJumpDuration = 10.0f;
-	// Collider
+	// Collider 충돌 판정 !! !
 	ColliderCircle* m_pColliderCircle = nullptr;
 	ColliderBox* m_pColliderBox = nullptr;
 
